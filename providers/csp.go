@@ -2,6 +2,7 @@ package providers
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -29,7 +30,7 @@ func NewCSPProvider(p *ProviderData) *CspProvider {
 	return &CspProvider{ProviderData: p}
 }
 
-func (p *CspProvider) Redeem(redirectURL, code string) (s *sessions.SessionState, err error) {
+func (p *CspProvider) Redeem(ctx context.Context, redirectURL, code string) (s *sessions.SessionState, err error) {
 	if code == "" {
 		err = errors.New("missing code")
 		return
@@ -116,16 +117,16 @@ func (p *CspProvider) GetLoginURL(redirectURI, state string) string {
 
 // CookieForSession serializes a session state for storage in a cookie
 func (p *CspProvider) CookieForSession(s *sessions.SessionState, c *encryption.Cipher) (string, error) {
-	bytes, err := s.EncodeSessionState(c)
+	bytes, err := s.EncodeSessionState(*c, true)
 	return string(bytes), err
 }
 
 // SessionFromCookie deserializes a session from a cookie value
 func (p *CspProvider) SessionFromCookie(v string, c *encryption.Cipher) (s *sessions.SessionState, err error) {
-	return sessions.DecodeSessionState(v, c)
+	return sessions.DecodeSessionState([]byte(v), *c, true)
 }
 
-func (p *CspProvider) GetEmailAddress(ctx context.Context, *sessions.SessionState) (string, error) {
+func (p *CspProvider) GetEmailAddress(ctx context.Context, s *sessions.SessionState) (string, error) {
 	req, err := http.NewRequest("GET", p.ValidateURL.String(), nil)
 	req.Header.Set("csp-auth-token", s.AccessToken)
 
@@ -158,7 +159,7 @@ func (p *CspProvider) GetEmailAddress(ctx context.Context, *sessions.SessionStat
 
 // GetUserName returns the Account username
 func (p *CspProvider) GetUserName(s *sessions.SessionState) (string, error) {
-	return p.GetEmailAddress(s)
+	return p.GetEmailAddress(context.Background(), s)
 }
 
 // ValidateGroup validates that the provided email exists in the configured provider
@@ -168,11 +169,11 @@ func (p *CspProvider) ValidateGroup(email string) bool {
 }
 
 func (p *CspProvider) ValidateSessionState(s *sessions.SessionState) bool {
-	_, err := p.GetEmailAddress(s)
+	_, err := p.GetEmailAddress(context.Background(), s)
 	return err != nil
 }
 
 // RefreshSessionIfNeeded
-func (p *CspProvider) RefreshSessionIfNeeded(s *sessions.SessionState) (bool, error) {
+func (p *CspProvider) RefreshSessionIfNeeded(ctx context.Context, s *sessions.SessionState) (bool, error) {
 	return false, nil
 }

@@ -153,6 +153,11 @@ type LegacyHeaders struct {
 	PreferEmailToUser    bool   `flag:"prefer-email-to-user" cfg:"prefer_email_to_user"`
 	BasicAuthPassword    string `flag:"basic-auth-password" cfg:"basic_auth_password"`
 	SkipAuthStripHeaders bool   `flag:"skip-auth-strip-headers" cfg:"skip_auth_strip_headers"`
+
+	// vmware additions
+	ExtraHeaders []string `flag:"extra-headers" cfg:"extra_headers"`
+	GazIdpID     string   `flag:"gaz-idp-id" cfg:"gaz_idp_id"`
+	GazContextID string   `flag:"gaz-context-id" cfg:"gaz_context_id"`
 }
 
 func legacyHeadersFlagSet() *pflag.FlagSet {
@@ -170,6 +175,11 @@ func legacyHeadersFlagSet() *pflag.FlagSet {
 	flagSet.Bool("prefer-email-to-user", false, "Prefer to use the Email address as the Username when passing information to upstream. Will only use Username if Email is unavailable, eg. htaccess authentication. Used in conjunction with -pass-basic-auth and -pass-user-headers")
 	flagSet.String("basic-auth-password", "", "the password to set when passing the HTTP Basic Auth header")
 	flagSet.Bool("skip-auth-strip-headers", true, "strips X-Forwarded-* style authentication headers & Authorization header if they would be set by oauth2-proxy")
+
+	// vmware additions
+	flagSet.String("gaz-idp-id", "", "Value for the idp_id parameter")
+	flagSet.String("gaz-context-id", "", "Value for the context_id parameter")
+	flagSet.StringSlice("extra-headers", []string{}, "extra headers to pass to the upstream 'Header: Value' format")
 
 	return flagSet
 }
@@ -199,6 +209,27 @@ func (l *LegacyHeaders) getRequestHeaders() []Header {
 
 	if l.PassAuthorization {
 		requestHeaders = append(requestHeaders, getAuthorizationHeader())
+	}
+
+	// vmware addition
+	for _, hv := range l.ExtraHeaders {
+		parts := strings.Split(hv, ":")
+		if len(parts) != 2 {
+			continue
+		}
+		name := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
+
+		requestHeaders = append(requestHeaders, Header{
+			Name: name,
+			Values: []HeaderValue{
+				{
+					StringSource: &StringSource{
+						Value: value,
+					},
+				},
+			},
+		})
 	}
 
 	for i := range requestHeaders {

@@ -47,6 +47,9 @@ func New(provider string, p *ProviderData) Provider {
 		return NewDigitalOceanProvider(p)
 	case "google":
 		return NewGoogleProvider(p)
+	// vmware addition
+	case "csp":
+		return NewCSPProvider(p)
 	default:
 		return nil
 	}

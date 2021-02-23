@@ -25,6 +25,14 @@ type HeaderValue struct {
 
 	// Allow users to load the value from a session claim
 	*ClaimSource `json:",omitempty"`
+
+	// Allow headers to be provided via config
+	*StringSource `json:",omitempty"`
+}
+
+// StringSource is a header value provided by config
+type StringSource struct {
+	Value string `json:"value,omitempty"`
 }
 
 // ClaimSource allows loading a header value from a claim within the session

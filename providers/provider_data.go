@@ -48,6 +48,11 @@ type ProviderData struct {
 	// Universal Group authorization data structure
 	// any provider can set to consume
 	AllowedGroups map[string]struct{}
+
+	// vmware additions
+	GazIdpId     string
+	GazContextId string
+	ExtraHeaders []string
 }
 
 // Data returns the ProviderData

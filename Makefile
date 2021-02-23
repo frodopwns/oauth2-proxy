@@ -1,6 +1,12 @@
 GO ?= go
 GOLANGCILINT ?= golangci-lint
 
+# vmware additions
+IMAGE               ?= csp-rc-docker-local.artifactory.eng.vmware.com/dev-platform/oauth2-proxy
+PUBLIC_IMAGE        ?= vmware-docker-vdp.bintray.io/dev-platform/oauth2-proxy
+TAG ?= test
+# end vmware additions
+
 BINARY := oauth2-proxy
 VERSION ?= $(shell git describe --always --dirty --tags 2>/dev/null || echo "undefined")
 # Allow to override image registry.
@@ -38,8 +44,24 @@ lint: validate-go-version
 .PHONY: build
 build: validate-go-version clean $(BINARY)
 
+# vmware additions
+build-image:
+	docker build . -t $(IMAGE):$(TAG)
+
+push-image: build-image
+	docker push $(IMAGE):$(TAG)
+
+shell:
+	docker run -ti --rm -v `pwd`:/workspace --net=host --entrypoint=/bin/bash \
+	  $(IMAGE):$(TAG)
+
+guess-tag:
+	@echo "v`git rev-parse --short HEAD`"
+
+# end vmware additions
+
 $(BINARY):
-	GO111MODULE=on CGO_ENABLED=0 $(GO) build -a -installsuffix cgo -ldflags="-X main.VERSION=${VERSION}" -o $@ github.com/oauth2-proxy/oauth2-proxy/v7
+	GO111MODULE=on CGO_ENABLED=0 $(GO) build -a -installsuffix cgo -ldflags="-X main.VERSION=${VERSION}" .
 
 .PHONY: docker
 docker:
@@ -57,7 +79,8 @@ docker-all: docker
 
 .PHONY: docker-push
 docker-push:
-	docker push $(REGISTRY)/oauth2-proxy:latest
+	docker tag $(IMAGE):$(TAG) $(PUBLIC_IMAGE):$(TAG)
+	docker push $(PUBLIC_IMAGE):$(TAG
 
 .PHONY: docker-push-all
 docker-push-all: docker-push
